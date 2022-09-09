@@ -5,43 +5,32 @@ import br.unisinos.stream.BitWriter;
 
 import java.io.IOException;
 
-public class Golomb extends Encoding {
+public class EliasGamma extends Encoding {
 
-    private int divisor;
     private Unary unary;
 
     private int prefixCount;
     private boolean countingPrefix;
 
-    public Golomb(int divisor) {
-        this.divisor = divisor;
+    public EliasGamma() {
         this.unary = new Unary();
         countingPrefix = true;
     }
 
     @Override
     public byte getIdentifier() {
-        return Encoding.GOLOMB;
-    }
-
-    @Override
-    public byte getArg() {
-        return (byte) divisor;
+        return Encoding.ELIAS_GAMMA;
     }
 
     @Override
     public void encodeByte(BitWriter writer, byte value) throws IOException {
-        int intValue = Byte.toUnsignedInt(value);
+        int intValue = Byte.toUnsignedInt(value) + 1;
 
-        int prefix = intValue / divisor;
-        this.unary.encodeUnsignedByte(writer, (byte) prefix, true);
+        int prefixLength = log2(intValue);
+        this.unary.encodeUnsignedByte(writer, (byte) prefixLength, true);
 
-        int suffix = intValue % divisor;
-        writer.writeBinary(suffix, suffixLength());
-    }
-
-    private int suffixLength() {
-        return log2(divisor);
+        int suffix = intValue - (int) Math.pow(2, prefixLength);
+        writer.writeBinary(suffix, prefixLength);
     }
 
     @Override
@@ -54,8 +43,8 @@ public class Golomb extends Encoding {
                 else
                     countingPrefix = false;
             } else {
-                byte suffix = reader.readBits(suffixLength());
-                int decodedByte = (prefixCount * divisor + suffix);
+                byte suffix = reader.readBits(prefixCount);
+                int decodedByte = (int) Math.pow(2, prefixCount) + suffix - 1;
                 countingPrefix = true;
                 prefixCount = 0;
                 return (byte) decodedByte;

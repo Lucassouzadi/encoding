@@ -29,7 +29,7 @@ public class BitReader {
     public byte readBits(int length) throws IOException {
         byte readByte = 0;
         for (int i = 0; i < length; i++) {
-            readByte <<= i;
+            readByte <<= 1;
             readByte |= readBit() ? 1 : 0;
         }
         return readByte;

@@ -10,7 +10,7 @@ public abstract class Encoding {
 
     public static final byte GOLOMB = 0;
     public static final byte ELIAS_GAMMA = 1;
-    public static final byte FIBBONACCI = 2;
+    public static final byte FIBONACCI = 2;
     public static final byte UNARY = 3;
     public static final byte DELTA = 4;
     public static final byte BINARY = 5;
@@ -19,6 +19,10 @@ public abstract class Encoding {
         switch (identifier) {
             case GOLOMB:
                 return new Golomb(arg);
+            case ELIAS_GAMMA:
+                return new EliasGamma();
+            case FIBONACCI:
+                return new Fibonacci();
             case UNARY:
                 return new Unary(arg > 0);
             case BINARY:
@@ -57,6 +61,10 @@ public abstract class Encoding {
     public void writeHeader(BitWriter writer) throws IOException {
         writer.writeByte(getIdentifier());
         writer.writeByte(getArg());
+    }
+
+    public static int log2(int x) {
+        return (int) (Math.log(x) / Math.log(2));
     }
 
 }
