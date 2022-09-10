@@ -5,6 +5,7 @@ import br.unisinos.stream.BitWriter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 
 public abstract class Encoding {
 
@@ -31,6 +32,14 @@ public abstract class Encoding {
         return null;
     }
 
+    public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) throws IOException {
+        try {
+            encodeByte(writer, dictionary.get(Byte.toUnsignedInt(value)).byteValue());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
     public abstract void encodeByte(BitWriter writer, byte value) throws IOException;
 
     public abstract byte decodeByte(BitReader reader) throws IOException;
@@ -38,6 +47,13 @@ public abstract class Encoding {
     public void encodeByteArray(BitWriter writer, byte[] bytes) throws IOException {
         for (byte b : bytes) {
             this.encodeByte(writer, b);
+        }
+    }
+
+    public void encodeStream(Map<Integer, Integer> dictionary, BitWriter writer, InputStream stream) throws IOException {
+        int read;
+        while ((read = stream.read()) != -1) {
+            this.encodeByte(dictionary, writer, (byte) read);
         }
     }
 

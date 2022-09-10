@@ -48,15 +48,14 @@ public class BitWriter implements AutoCloseable {
             writeBit(fillupBit, false);
             flush();
         } else {
-            this.writeByte(buffer);
+            this.out.write(buffer);
             this.buffer = 0;
             this.count = 0;
         }
     }
 
     public void writeByte(byte value) throws IOException {
-        this.out.write(value);
-        System.out.print(value + " ");
+        this.writeBinary(value, 8);
     }
 
     @Override
