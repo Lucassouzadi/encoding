@@ -1,6 +1,8 @@
 package br.unisinos;
 
+import br.unisinos.encoding.Delta;
 import br.unisinos.encoding.Encoding;
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 import br.unisinos.utils.Tuple;
@@ -24,9 +26,9 @@ public class Encoder {
         this.encoding = Encoding.getInstance(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
     }
 
-    public void getEncoding(BitReader reader) throws IOException {
-        byte encodingIdentifier = reader.readByte();
-        byte arg1 = reader.readByte();
+    public void getEncoding(BitReader reader) throws EndOfStreamException {
+        int encodingIdentifier = Byte.toUnsignedInt(reader.readByte());
+        int arg1 = Byte.toUnsignedInt(reader.readByte());
         this.encoding = Encoding.getInstance(encodingIdentifier, arg1);
     }
 
@@ -36,8 +38,15 @@ public class Encoder {
                 FileOutputStream outputStream = new FileOutputStream(targetPath);
                 BitWriter bitWriter = new BitWriter(outputStream)
         ) {
+            BitReader bitReader = new BitReader(inputStream);
+
+            if (encoding instanceof Delta) {
+                ((Delta) encoding).setMaxLeap(getMaxLeap(filePath));
+            }
+
             bitWriter.setFillupBit(encoding.getFillupBit());
             encoding.writeHeader(bitWriter);
+
             if (useDictionary) {
                 int[] histogram = getHistogram(filePath);
                 List<Tuple<Integer, Integer>> sortedHistogram = sortedHistogram(histogram);
@@ -48,12 +57,16 @@ public class Encoder {
                 for (Tuple<Integer, Integer> codeword : sortedHistogram) {
                     bitWriter.writeByte(codeword.getKey().byteValue());
                 }
-                encoding.encodeStream(dictionary, bitWriter, inputStream);
+
+                encoding.encodeStream(dictionary, bitWriter, bitReader);
             } else {
-                encoding.encodeStream(bitWriter, inputStream);
+                encoding.encodeStream(bitWriter, bitReader);
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (EndOfStreamException ex) {
+            System.out.println("File encoded successfully");
+        } catch (IOException e) {
+            System.out.println("Error while encoding file");
+            e.printStackTrace();
         }
     }
 
@@ -66,21 +79,25 @@ public class Encoder {
             BitReader bitReader = new BitReader(inputStream);
             getEncoding(bitReader);
 
-            int range = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
-
             Map<Integer, Integer> dictionary = new HashMap<>();
-            for (int i = 0; i < range; i++) {
-                dictionary.put(i, Byte.toUnsignedInt(bitReader.readBits(8)));
+            if (useDictionary) {
+                int range = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
+                for (int i = 0; i < range; i++)
+                    dictionary.put(i, Byte.toUnsignedInt(bitReader.readBits(8)));
             }
 
             while (true) {
                 byte decodedByte = encoding.decodeByte(bitReader);
-                byte aaa = dictionary.get(Byte.toUnsignedInt(decodedByte)).byteValue();
-                bitWriter.writeByte(aaa);
+                if (useDictionary) {
+                    decodedByte = dictionary.get(Byte.toUnsignedInt(decodedByte)).byteValue();
+                }
+                bitWriter.writeByte(decodedByte);
             }
-
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (EndOfStreamException ex) {
+            System.out.println("File decoded successfully");
+        } catch (IOException e) {
+            System.out.println("Error while decoding file");
+            e.printStackTrace();
         }
     }
 
@@ -96,7 +113,6 @@ public class Encoder {
         }
         return histogram;
     }
-
 
     private List<Tuple<Integer, Integer>> sortedHistogram(int[] histogram) {
         AtomicInteger i = new AtomicInteger(0);
@@ -115,6 +131,23 @@ public class Encoder {
             dictionary.put(sortedHistogram.get(i).getKey(), i);
         }
         return dictionary;
+    }
+
+    public int getMaxLeap(String filePath) {
+        int maxLeap = 0;
+        try (FileInputStream inputStream = new FileInputStream(filePath)) {
+            int lastRead, read = inputStream.read();
+            lastRead = read;
+            while (read != -1) {
+                int leap = Math.abs(read - lastRead);
+                maxLeap = Math.max(leap, maxLeap);
+                lastRead = read;
+                read = inputStream.read();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return maxLeap;
     }
 
 }

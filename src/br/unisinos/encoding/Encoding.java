@@ -1,10 +1,9 @@
 package br.unisinos.encoding;
 
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Map;
 
 public abstract class Encoding {
@@ -24,6 +23,8 @@ public abstract class Encoding {
                 return new EliasGamma();
             case FIBONACCI:
                 return new Fibonacci();
+            case DELTA:
+                return new Delta(arg);
             case UNARY:
                 return new Unary(arg > 0);
             case BINARY:
@@ -32,7 +33,7 @@ public abstract class Encoding {
         return null;
     }
 
-    public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) throws IOException {
+    public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) {
         try {
             encodeByte(writer, dictionary.get(Byte.toUnsignedInt(value)).byteValue());
         } catch (Exception ex) {
@@ -40,27 +41,33 @@ public abstract class Encoding {
         }
     }
 
-    public abstract void encodeByte(BitWriter writer, byte value) throws IOException;
+    public abstract void encodeByte(BitWriter writer, byte value);
 
-    public abstract byte decodeByte(BitReader reader) throws IOException;
+    public abstract byte decodeByte(BitReader reader) throws EndOfStreamException;
 
-    public void encodeByteArray(BitWriter writer, byte[] bytes) throws IOException {
+    public void encodeByteArray(BitWriter writer, byte[] bytes) {
         for (byte b : bytes) {
             this.encodeByte(writer, b);
         }
     }
 
-    public void encodeStream(Map<Integer, Integer> dictionary, BitWriter writer, InputStream stream) throws IOException {
-        int read;
-        while ((read = stream.read()) != -1) {
-            this.encodeByte(dictionary, writer, (byte) read);
+    public void encodeByteArray(Map<Integer, Integer> dictionary, BitWriter writer, byte[] bytes) {
+        for (byte b : bytes) {
+            this.encodeByte(dictionary, writer, b);
         }
     }
 
-    public void encodeStream(BitWriter writer, InputStream stream) throws IOException {
-        int read;
-        while ((read = stream.read()) != -1) {
-            this.encodeByte(writer, (byte) read);
+    public void encodeStream(Map<Integer, Integer> dictionary, BitWriter writer, BitReader bitReader) throws EndOfStreamException {
+        while (true) {
+            byte read = bitReader.readByte();
+            this.encodeByte(dictionary, writer, read);
+        }
+    }
+
+    public void encodeStream(BitWriter writer, BitReader bitReader) throws EndOfStreamException {
+        while (true) {
+            byte read = bitReader.readByte();
+            this.encodeByte(writer, read);
         }
     }
 
@@ -74,7 +81,7 @@ public abstract class Encoding {
         return false;
     }
 
-    public void writeHeader(BitWriter writer) throws IOException {
+    public void writeHeader(BitWriter writer) {
         writer.writeByte(getIdentifier());
         writer.writeByte(getArg());
     }

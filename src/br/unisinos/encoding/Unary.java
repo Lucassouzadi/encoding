@@ -1,9 +1,8 @@
 package br.unisinos.encoding;
 
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
-
-import java.io.IOException;
 
 public class Unary extends Encoding {
 
@@ -20,12 +19,12 @@ public class Unary extends Encoding {
     }
 
     @Override
-    public void encodeByte(BitWriter writer, byte value) throws IOException {
+    public void encodeByte(BitWriter writer, byte value) {
         encodeUnsignedByte(writer, value, true);
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws IOException {
+    public byte decodeByte(BitReader reader) throws EndOfStreamException {
         while (true) {
             boolean bit = reader.readBit();
             if (bit == stopBit) {
@@ -53,7 +52,7 @@ public class Unary extends Encoding {
         return !stopBit;
     }
 
-    public void encodeUnsignedByte(BitWriter writer, byte value, boolean useStopBit) throws IOException {
+    public void encodeUnsignedByte(BitWriter writer, byte value, boolean useStopBit) {
         int intValue = Byte.toUnsignedInt(value);
         for (int i = 0; i < intValue; i++)
             writer.writeBit(!stopBit);

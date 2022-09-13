@@ -1,9 +1,8 @@
 package br.unisinos.encoding;
 
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
-
-import java.io.IOException;
 
 public class EliasGamma extends Encoding {
 
@@ -23,7 +22,7 @@ public class EliasGamma extends Encoding {
     }
 
     @Override
-    public void encodeByte(BitWriter writer, byte value) throws IOException {
+    public void encodeByte(BitWriter writer, byte value) {
         int intValue = Byte.toUnsignedInt(value) + 1;
 
         int prefixLength = log2(intValue);
@@ -34,7 +33,7 @@ public class EliasGamma extends Encoding {
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws IOException {
+    public byte decodeByte(BitReader reader) throws EndOfStreamException {
         while (true) {
             if (countingPrefix) {
                 boolean bit = reader.readBit();

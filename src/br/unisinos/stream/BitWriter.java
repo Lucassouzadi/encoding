@@ -1,9 +1,10 @@
 package br.unisinos.stream;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class BitWriter implements AutoCloseable {
+public class BitWriter implements Closeable {
 
     private static final int BUFFER_LENGTH = 8;
 
@@ -21,7 +22,7 @@ public class BitWriter implements AutoCloseable {
         this.fillupBit = bit;
     }
 
-    public void writeBinary(int value, int length) throws IOException {
+    public void writeBinary(int value, int length) {
         int shift = length - 1;
         while (shift >= 0) {
             int bit = (value >> shift--) & 1; // get bit at position [shift]
@@ -29,11 +30,11 @@ public class BitWriter implements AutoCloseable {
         }
     }
 
-    public void writeBit(boolean bit) throws IOException {
+    public void writeBit(boolean bit) {
         writeBit(bit, true);
     }
 
-    private void writeBit(boolean bit, boolean flush) throws IOException {
+    private void writeBit(boolean bit, boolean flush) {
         this.count++;
         this.buffer <<= 1;
         this.buffer |= bit ? 1 : 0;
@@ -42,24 +43,32 @@ public class BitWriter implements AutoCloseable {
         }
     }
 
-    public void flush() throws IOException {
+    public void flush() {
         if (this.count == 0) return;
         if (this.count < BUFFER_LENGTH) {
             writeBit(fillupBit, false);
             flush();
         } else {
-            this.out.write(buffer);
+            this.writeByteToOutPutStream(buffer);
             this.buffer = 0;
             this.count = 0;
         }
     }
 
-    public void writeByte(byte value) throws IOException {
+    private void writeByteToOutPutStream(byte value) {
+        try {
+            this.out.write(value);
+        } catch (IOException ioe) {
+            throw new RuntimeException("Erro ao ler arquivo", ioe);
+        }
+    }
+
+    public void writeByte(byte value) {
         this.writeBinary(value, 8);
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         flush();
     }
 }

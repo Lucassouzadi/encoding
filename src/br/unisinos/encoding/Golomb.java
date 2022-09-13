@@ -1,9 +1,8 @@
 package br.unisinos.encoding;
 
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
-
-import java.io.IOException;
 
 public class Golomb extends Encoding {
 
@@ -30,7 +29,7 @@ public class Golomb extends Encoding {
     }
 
     @Override
-    public void encodeByte(BitWriter writer, byte value) throws IOException {
+    public void encodeByte(BitWriter writer, byte value) {
         int intValue = Byte.toUnsignedInt(value);
 
         int prefix = intValue / divisor;
@@ -45,7 +44,7 @@ public class Golomb extends Encoding {
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws IOException {
+    public byte decodeByte(BitReader reader) throws EndOfStreamException {
         while (true) {
             if (countingPrefix) {
                 boolean bit = reader.readBit();

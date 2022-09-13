@@ -1,9 +1,9 @@
 package br.unisinos.encoding;
 
+import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +29,7 @@ public class Fibonacci extends Encoding {
     }
 
     @Override
-    public void encodeByte(BitWriter writer, byte value) throws IOException {
+    public void encodeByte(BitWriter writer, byte value) {
         int intValue = Byte.toUnsignedInt(value) + 1;
 
         int closest = updateSequence(intValue);
@@ -51,7 +51,7 @@ public class Fibonacci extends Encoding {
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws IOException {
+    public byte decodeByte(BitReader reader) throws EndOfStreamException {
         while (true) {
             boolean bit = reader.readBit();
             if (bit && lastBit) {
