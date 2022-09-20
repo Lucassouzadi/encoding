@@ -2,10 +2,12 @@ package br.unisinos;
 
 import br.unisinos.encoding.Delta;
 import br.unisinos.encoding.Encoding;
+import br.unisinos.errorDetection.CRC8;
 import br.unisinos.exception.EndOfStreamException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 import br.unisinos.utils.Tuple;
+import br.unisinos.utils.Utils;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -16,14 +18,13 @@ import java.util.stream.Collectors;
 
 public class Encoder {
 
-    private final boolean useDictionary = true;
     private Encoding encoding;
 
     public Encoder() {
     }
 
-    public Encoder(String[] args) {
-        this.encoding = Encoding.getInstance(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
+    public Encoder(int encodingId, int arg) {
+        this.encoding = Encoding.getInstance(encodingId, arg);
     }
 
     public void getEncoding(BitReader reader) throws EndOfStreamException {
@@ -33,14 +34,22 @@ public class Encoder {
     }
 
     public void encodeFile(String filePath) {
-        int lastIndexOfPeriod = filePath.lastIndexOf('.');
-        lastIndexOfPeriod = lastIndexOfPeriod != -1 ? lastIndexOfPeriod : filePath.length();
-        String fileNameWithoutExtension = filePath.substring(0, lastIndexOfPeriod);
-        encodeFile(filePath, fileNameWithoutExtension + ".cod", false);
-        encodeFile(filePath, fileNameWithoutExtension + ".ecc", true);
+        String codedPath = Utils.switchFileExtension(filePath, "cod");
+        String encryptedPath = Utils.switchFileExtension(filePath, "ecc");
+
+        encodeFile(filePath, codedPath);
+        encryptFile(codedPath, encryptedPath);
     }
 
-    private void encodeFile(String filePath, String targetPath, boolean useHamming) {
+    public void decodeFile(String filePath) {
+        String decryptedPath = Utils.switchFileExtension(filePath, "dcc");
+        String decodedPath = Utils.switchFileExtension(filePath, "dec");
+
+        if (decryptFile(filePath, decryptedPath))
+            decodeFile(decryptedPath, decodedPath);
+    }
+
+    private void encodeFile(String filePath, String targetPath) {
         try (
                 FileInputStream inputStream = new FileInputStream(filePath);
                 FileOutputStream outputStream = new FileOutputStream(targetPath);
@@ -55,37 +64,123 @@ public class Encoder {
             bitWriter.setFillupBit(encoding.getFillupBit());
             encoding.writeHeader(bitWriter);
 
-            if (useDictionary) {
+            if (Main.PROPERTIES.useDictionary) {
                 int[] histogram = getHistogram(filePath);
                 List<Tuple<Integer, Integer>> sortedHistogram = sortedHistogram(histogram);
                 Map<Integer, Integer> dictionary = buildDictionary(sortedHistogram);
 
-                bitWriter.writeByte(Integer.valueOf(dictionary.size() - 1).byteValue());
+                byte range = Integer.valueOf(dictionary.size() - 1).byteValue();
+                bitWriter.writeByte(range);
 
                 for (Tuple<Integer, Integer> codeword : sortedHistogram) {
                     bitWriter.writeByte(codeword.getKey().byteValue());
                 }
-
-                bitWriter.setUseHamming(useHamming);
                 encoding.encodeStream(dictionary, bitWriter, bitReader);
             } else {
-                bitWriter.setUseHamming(useHamming);
                 encoding.encodeStream(bitWriter, bitReader);
             }
         } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " " + (useHamming ? "encrypted" : "encoded") + " to " + targetPath);
+            System.out.println(filePath + " encoded to " + targetPath);
         } catch (IOException e) {
-            System.out.println("Error while encoding " + filePath);
+            System.out.println("Error while encoding: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    public void decodeFile(String filePath) {
-        String decryptedPath = filePath.substring(0, filePath.lastIndexOf('.')) + ".dcc";
-        String decodedPath = filePath.substring(0, filePath.lastIndexOf('.')) + ".dec";
+    private void encryptFile(String filePath, String targetPath) {
+        try (
+                FileInputStream inputStream = new FileInputStream(filePath);
+                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                BitWriter bitWriter = new BitWriter(outputStream)
+        ) {
+            BitReader bitReader = new BitReader(inputStream);
 
-        decryptFile(filePath, decryptedPath);
-        decodeFile(decryptedPath, decodedPath);
+            getEncoding(bitReader);
+            encoding.writeHeader(bitWriter);
+
+            List<Byte> crcBytes = new ArrayList<>();
+            crcBytes.add(encoding.getIdentifier());
+            crcBytes.add(encoding.getArg());
+
+            if (Main.PROPERTIES.useDictionary) {
+                byte dictionarySizeByte = bitReader.readBits(8);
+                crcBytes.add(dictionarySizeByte);
+                bitWriter.writeByte(dictionarySizeByte);
+                for (int i = 0; i <= Byte.toUnsignedInt(dictionarySizeByte); i++) {
+                    byte readByte = bitReader.readBits(8);
+                    crcBytes.add(readByte);
+                    bitWriter.writeByte(readByte);
+                }
+            }
+            bitWriter.writeByte(CRC8.calculate(crcBytes.toArray(new Byte[0])));
+            boolean[] hammingShort = new boolean[4];
+            while (true) {
+                hammingShort[0] = bitReader.readBit();
+                hammingShort[1] = bitReader.readBit();
+                hammingShort[2] = bitReader.readBit();
+                hammingShort[3] = bitReader.readBit();
+                bitWriter.writeHammingNibble(hammingShort);
+            }
+        } catch (EndOfStreamException ex) {
+            System.out.println(filePath + " encrypted to " + targetPath);
+        } catch (IOException e) {
+            System.out.println("Error while encrypting: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private boolean decryptFile(String filePath, String targetPath) {
+        try (
+                FileInputStream inputStream = new FileInputStream(filePath);
+                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                BitWriter bitWriter = new BitWriter(outputStream);
+        ) {
+            BitReader bitReader = new BitReader(inputStream);
+            getEncoding(bitReader);
+            encoding.writeHeader(bitWriter);
+
+            List<Byte> crcBytes = new ArrayList<>();
+            crcBytes.add(encoding.getIdentifier());
+            crcBytes.add(encoding.getArg());
+
+            if (Main.PROPERTIES.useDictionary) {
+                byte dictionarySizebyte = bitReader.readBits(8);
+                crcBytes.add(dictionarySizebyte);
+                bitWriter.writeByte(dictionarySizebyte);
+                for (int i = 0; i <= Byte.toUnsignedInt(dictionarySizebyte); i++) {
+                    byte readByte = bitReader.readBits(8);
+                    crcBytes.add(readByte);
+                    bitWriter.writeByte(readByte);
+                }
+            }
+
+            byte readCrc = bitReader.readBits(8);
+            byte calculatedCrc = CRC8.calculate(crcBytes.toArray(new Byte[0]));
+
+            if (readCrc != calculatedCrc) {
+                System.out.println("Erro de validação de CRC para " + filePath + " - calculado: " + Byte.toUnsignedInt(calculatedCrc) + ", lido: " + Byte.toUnsignedInt(readCrc));
+                return false;
+            }
+
+            while (true) {
+                boolean[] hammingCodeword = new boolean[7];
+                hammingCodeword[0] = bitReader.readBit();
+                hammingCodeword[1] = bitReader.readBit();
+                hammingCodeword[2] = bitReader.readBit();
+                hammingCodeword[3] = bitReader.readBit();
+                hammingCodeword[4] = bitReader.readBit();
+                hammingCodeword[5] = bitReader.readBit();
+                hammingCodeword[6] = bitReader.readBit();
+                bitWriter.writeHammingCodeword(hammingCodeword);
+            }
+        } catch (EndOfStreamException ex) {
+            System.out.println(filePath + " decrypted to " + targetPath);
+        } catch (IOException e) {
+            System.out.println("Error while decrypting: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 
     private void decodeFile(String filePath, String targetPath) {
@@ -98,7 +193,7 @@ public class Encoder {
             getEncoding(bitReader);
 
             Map<Integer, Integer> dictionary = new HashMap<>();
-            if (useDictionary) {
+            if (Main.PROPERTIES.useDictionary) {
                 int range = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
                 for (int i = 0; i < range; i++)
                     dictionary.put(i, Byte.toUnsignedInt(bitReader.readBits(8)));
@@ -106,7 +201,7 @@ public class Encoder {
 
             while (true) {
                 byte decodedByte = encoding.decodeByte(bitReader);
-                if (useDictionary) {
+                if (Main.PROPERTIES.useDictionary) {
                     decodedByte = dictionary.get(Byte.toUnsignedInt(decodedByte)).byteValue();
                 }
                 bitWriter.writeByte(decodedByte);
@@ -114,44 +209,7 @@ public class Encoder {
         } catch (EndOfStreamException ex) {
             System.out.println(filePath + " decoded to " + targetPath);
         } catch (IOException e) {
-            System.out.println("Error while decoding " + filePath);
-            e.printStackTrace();
-        }
-    }
-
-    private void decryptFile(String filePath, String targetPath) {
-        try (
-                FileInputStream inputStream = new FileInputStream(filePath);
-                FileOutputStream outputStream = new FileOutputStream(targetPath);
-                BitWriter bitWriter = new BitWriter(outputStream);
-        ) {
-            BitReader bitReader = new BitReader(inputStream);
-            getEncoding(bitReader);
-            encoding.writeHeader(bitWriter);
-
-            if (useDictionary) {
-                int range = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
-                bitWriter.writeByte(Integer.valueOf(range - 1).byteValue());
-                for (int i = 0; i < range; i++)
-                    bitWriter.writeByte(bitReader.readBits(8));
-            }
-
-            boolean[] hammingCodeword = new boolean[7];
-            while (true) {
-//                int hammingCodeword = bitReader.readBits(7);
-                hammingCodeword[0] = bitReader.readBit();
-                hammingCodeword[1] = bitReader.readBit();
-                hammingCodeword[2] = bitReader.readBit();
-                hammingCodeword[3] = bitReader.readBit();
-                hammingCodeword[4] = bitReader.readBit();
-                hammingCodeword[5] = bitReader.readBit();
-                hammingCodeword[6] = bitReader.readBit();
-                bitWriter.writeHammingCodeword(hammingCodeword);
-            }
-        } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " decrypdet to " + targetPath);
-        } catch (IOException e) {
-            System.out.println("Error while decoding " + filePath);
+            System.out.println("Error while decoding: " + e.getMessage());
             e.printStackTrace();
         }
     }

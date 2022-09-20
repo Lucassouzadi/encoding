@@ -14,18 +14,11 @@ public class BitWriter implements Closeable {
     private OutputStream out;
     private byte buffer;
     private int count;
-    private int hammingCount;
-    private short hammingBuffer;
-    private boolean useHamming = false;
     private boolean fillupBit = false;
 
     public BitWriter(OutputStream out) {
         this.out = out;
         this.count = 0;
-    }
-
-    public void setUseHamming(boolean flag) {
-        this.useHamming = flag;
     }
 
     public void setFillupBit(boolean bit) {
@@ -57,11 +50,7 @@ public class BitWriter implements Closeable {
     }
 
     public void writeBit(boolean bit) {
-        if (this.useHamming) {
-            writeBitHamming(bit);
-        } else {
-            writeBit(bit, true);
-        }
+        writeBit(bit, true);
     }
 
     private void writeBit(boolean bit, boolean flush) {
@@ -73,27 +62,15 @@ public class BitWriter implements Closeable {
         }
     }
 
-    private void writeBitHamming(boolean bit) {
-        this.hammingCount++;
-        this.hammingBuffer <<= 1;
-        this.hammingBuffer |= bit ? 1 : 0;
-        if (this.hammingCount == HAMMING.K) {
-            hammingFlush();
+    public void writeHammingNibble(boolean[] hammingShort) {
+        for (boolean bit : hammingShort) {
+            writeBit(bit, true);
         }
-    }
 
-    private void hammingFlush() {
-        boolean[] parityBits = HAMMING.parityBits(this.hammingBuffer);
-
-        for (int i = HAMMING.K; i > 0; i--) {
-            int bit = (this.hammingBuffer >> i - 1) & 1;
-            writeBit(bit == 1, true);
-        }
+        boolean[] parityBits = HAMMING.parityBits(hammingShort);
         for (boolean parityBit : parityBits) {
             writeBit(parityBit, true);
         }
-        this.hammingBuffer = 0;
-        this.hammingCount = 0;
     }
 
     public void flush() {
@@ -102,13 +79,13 @@ public class BitWriter implements Closeable {
             writeBit(fillupBit, false);
             flush();
         } else {
-            this.writeByteToOutPutStream(buffer);
+            this.writeByteToOutputStream(buffer);
             this.buffer = 0;
             this.count = 0;
         }
     }
 
-    private void writeByteToOutPutStream(byte value) {
+    private void writeByteToOutputStream(byte value) {
         try {
             this.out.write(value);
         } catch (IOException ioe) {

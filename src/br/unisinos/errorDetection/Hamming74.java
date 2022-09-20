@@ -2,16 +2,13 @@ package br.unisinos.errorDetection;
 
 public class Hamming74 {
 
-    public final int K = 4;
-    public final int N = 7;
+    public boolean[] parityBits(boolean[] value) {
+        boolean[] parity = new boolean[3];
 
-    public boolean[] parityBits(short value) {
-        boolean[] parity = new boolean[N - K];
-
-        boolean s1 = ((value >> 3) & 1) == 1;
-        boolean s2 = ((value >> 2) & 1) == 1;
-        boolean s3 = ((value >> 1) & 1) == 1;
-        boolean s4 = (value & 1) == 1;
+        boolean s1 = value[0];
+        boolean s2 = value[1];
+        boolean s3 = value[2];
+        boolean s4 = value[3];
 
         boolean t5 = s1 ^ s2 ^ s3;
         boolean t6 = s2 ^ s3 ^ s4;

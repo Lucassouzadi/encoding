@@ -13,7 +13,6 @@ public abstract class Encoding {
     public static final byte FIBONACCI = 2;
     public static final byte UNARY = 3;
     public static final byte DELTA = 4;
-    public static final byte BINARY = 5;
 
     public static Encoding getInstance(int identifier, int arg) {
         switch (identifier) {
@@ -27,10 +26,8 @@ public abstract class Encoding {
                 return new Delta(arg);
             case UNARY:
                 return new Unary(arg > 0);
-            case BINARY:
-                return new Binary();
         }
-        return null;
+        throw new RuntimeException("Encoding not found: " + identifier);
     }
 
     public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) {
