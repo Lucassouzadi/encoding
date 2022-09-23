@@ -33,7 +33,7 @@ public class BitReader {
         try {
             return in.read();
         } catch (IOException ioe) {
-            throw new RuntimeException("Erro ao ler arquivo", ioe);
+            throw new RuntimeException("Error while reading from InputStream", ioe);
         }
     }
 

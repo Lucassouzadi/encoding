@@ -86,7 +86,7 @@ public class BitWriter implements Closeable {
         try {
             out.write(value);
         } catch (IOException ioe) {
-            throw new RuntimeException("Erro ao ler arquivo", ioe);
+            throw new RuntimeException("Error while writing do OutputStream", ioe);
         }
     }
 

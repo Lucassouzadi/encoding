@@ -51,11 +51,7 @@ public abstract class Encoding {
     public abstract byte decodeByte(BitReader reader) throws EndOfFileException;
 
     public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) {
-        try {
-            encodeByte(writer, dictionary.get(Byte.toUnsignedInt(value)).byteValue());
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+        encodeByte(writer, dictionary.get(Byte.toUnsignedInt(value)).byteValue());
     }
 
     public void encodeByteArray(BitWriter writer, byte[] bytes) {

@@ -78,6 +78,8 @@ public class Encoder {
                 List<Tuple<Integer, Integer>> sortedHistogram = sortedHistogram(histogram);
                 Map<Integer, Integer> dictionary = buildDictionary(sortedHistogram);
 
+                logHistogramAndDictionary(histogram, sortedHistogram);
+
                 bitWriter.writeByte((byte) (dictionary.size() - 1));
 
                 for (Tuple<Integer, Integer> codeword : sortedHistogram) {
@@ -88,10 +90,9 @@ public class Encoder {
                 encoding.encodeStream(bitWriter, bitReader);
             }
         } catch (EndOfFileException ex) {
-            System.out.println(origin.getAbsolutePath() + " encoded to " + target.getAbsolutePath() + " using " + encoding.getName());
+            System.out.printf("%s encoded to %s using %s\n", origin.getAbsolutePath(), target.getAbsolutePath(), encoding.getName());
         } catch (IOException e) {
-            System.out.println("Error while encoding: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error while encoding " + origin.getAbsolutePath(), e);
         }
     }
 
@@ -116,10 +117,11 @@ public class Encoder {
                 bitWriter.encodeHammingNibble(hammingNibble);
             }
         } catch (EndOfFileException ex) {
-            System.out.println(origin.getAbsolutePath() + " encrypted to " + target.getAbsolutePath() + " using CRC8 for header and Hamming(7,4) for data");
+            System.out.printf("%s encrypted to %s using CRC8 for header and Hamming(7,4) for data\n",
+                    origin.getAbsolutePath(),
+                    target.getAbsolutePath());
         } catch (IOException e) {
-            System.out.println("Error while encrypting: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error while encrypting " + origin.getAbsolutePath(), e);
         }
     }
 
@@ -138,7 +140,10 @@ public class Encoder {
             byte calculatedCrc = CRC8.calculate(crcBytes.toArray(new Byte[0]));
 
             if (headerCrc != calculatedCrc) {
-                System.out.println("Erro de validação de CRC para " + origin + " - calculado: " + Byte.toUnsignedInt(calculatedCrc) + ", lido no cabeçalho: " + Byte.toUnsignedInt(headerCrc));
+                System.out.printf("Erro de validação de CRC para %s - calculado: 0x%02X, lido: 0x%02X\n",
+                        origin.getAbsolutePath(),
+                        Byte.toUnsignedInt(calculatedCrc),
+                        Byte.toUnsignedInt(headerCrc));
                 return false;
             }
 
@@ -154,13 +159,13 @@ public class Encoder {
                 bitWriter.decodeHammingCodeword(hammingCodeword);
             }
         } catch (EndOfFileException ex) {
-            System.out.println(origin.getAbsolutePath() + " decrypted to " + target.getAbsolutePath() + " validating CRC8 on header and Hamming(7,4) for data");
+            System.out.printf("%s decrypted to %s validating CRC8 on header and Hamming(7,4) for data\n",
+                    origin.getAbsolutePath(),
+                    target.getAbsolutePath());
+            return true;
         } catch (IOException e) {
-            System.out.println("Error while decrypting: " + e.getMessage());
-            e.printStackTrace();
-            return false;
+            throw new RuntimeException("Error while decrypting " + origin.getAbsolutePath(), e);
         }
-        return true;
     }
 
     private void skipHeaders(List<Byte> crcBytes, BitReader bitReader, BitWriter bitWriter) throws EndOfFileException {
@@ -206,22 +211,19 @@ public class Encoder {
                 bitWriter.writeByte(decodedByte);
             }
         } catch (EndOfFileException ex) {
-            System.out.println(origin.getAbsolutePath() + " decoded to " + target.getAbsolutePath() + " using " + encoding.getName());
+            System.out.printf("%s decoded to %s using %s\n", origin.getAbsolutePath(), target.getAbsolutePath(), encoding.getName());
         } catch (IOException e) {
-            System.out.println("Error while decoding: " + e.getMessage());
-            e.printStackTrace();
+            throw new RuntimeException("Error while decoding " + origin.getAbsolutePath(), e);
         }
     }
 
-    public int[] getHistogram(File file) {
+    public int[] getHistogram(File file) throws IOException {
         int[] histogram = new int[256];
         try (FileInputStream inputStream = new FileInputStream(file)) {
             int read;
             while ((read = inputStream.read()) != -1) {
                 histogram[read]++;
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
         return histogram;
     }
@@ -245,7 +247,7 @@ public class Encoder {
         return dictionary;
     }
 
-    private int getMaxLeap(File file) {
+    private int getMaxLeap(File file) throws IOException {
         int maxLeap = 0;
         try (FileInputStream inputStream = new FileInputStream(file)) {
             int currentByte = inputStream.read();
@@ -256,17 +258,31 @@ public class Encoder {
                 previousByte = currentByte;
                 currentByte = inputStream.read();
             }
-        } catch (Exception ex) {
-            ex.printStackTrace();
         }
         return maxLeap;
     }
 
     private void printSizes(File... files) {
         if (PROPERTIES.logFileSizes && files.length > 0) {
-            System.out.print(files[0].length() + " bytes");
+            System.out.printf("%d bytes", files[0].length());
             for (int i = 1; i < files.length; i++) {
-                System.out.print(" --> " + files[i].length() + " bytes");
+                System.out.printf(" --> %d bytes", files[i].length());
+            }
+            System.out.println();
+        }
+    }
+
+    private void logHistogramAndDictionary(int[] histogram, List<Tuple<Integer, Integer>> sortedHistogram) {
+        if (PROPERTIES.logHistogram) {
+            System.out.println("Histograma completo:");
+            for (int i = 0; i < histogram.length; i++) {
+                System.out.printf("\t[%c] 0x%02X (%d): %d ocorrências\n", i, i, i, histogram[i]);
+            }
+            System.out.printf("\nDicionário resultante(tamanho=%d):\n", sortedHistogram.size());
+            for (int i = 0; i < sortedHistogram.size(); i++) {
+                int key = sortedHistogram.get(i).getKey();
+                int value = sortedHistogram.get(i).getValue();
+                System.out.printf("\t[%c] 0x%02X, com %d ocorrências, mapeado para 0x%02X\n", key, key, value, i);
             }
             System.out.println();
         }

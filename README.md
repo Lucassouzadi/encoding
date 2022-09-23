@@ -2,8 +2,12 @@
 
 ## Benchmark de compressão das codificações
 
-- alice29 = 152089 bytes
+- alice29 = 152089 bytes 
+  - Dicionário criado com base no histograma: 74 codewords
+  
+
 - sum = 38240 bytes
+    - Dicionário criado com base no histograma: 255 codewords
 
 ### Codificação utilizando histograma+dicionário
 

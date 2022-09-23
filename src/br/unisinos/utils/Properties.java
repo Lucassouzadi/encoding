@@ -5,13 +5,13 @@ import java.lang.reflect.Field;
 public class Properties {
 
     public String action = "encodeAndDecode";
-    public String file;
+    public String file = "alice29.txt";
     public int encoding = 0;
     public int arg = 8;
     public boolean useDictionary = true;
 
     public boolean logFileSizes = true;
-//    public boolean logHistogram = false;
+    public boolean logHistogram = false;
 
     public void setProp(String key, String value) {
         try {
@@ -27,8 +27,10 @@ public class Properties {
                     field.set(this, value);
                     break;
             }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            System.err.printf("Parâmetro desconhecido: \"%s\"\n", key);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
         }
     }
 

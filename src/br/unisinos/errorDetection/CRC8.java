@@ -34,7 +34,7 @@ public class CRC8 {
                 System.out.printf(", 0x%02X", bytes[i]);
             }
         }
-        System.out.println("): " + String.format("0x%02X", Byte.toUnsignedInt(crc)));
+        System.out.printf("): 0x%02X\n", Byte.toUnsignedInt(crc));
     }
 
 

@@ -15,6 +15,11 @@ public class Main {
     public static void main(String[] args) throws IllegalAccessException {
         setProperties(args);
 
+        if (!new File(PROPERTIES.file).exists()) {
+            System.err.printf("Arquivo \"%s\" não encontrado", PROPERTIES.file);
+            System.exit(1);
+        }
+
         Encoder encoder = new Encoder(PROPERTIES.encoding, PROPERTIES.arg);
         Encoder decoder = new Encoder();
         switch (PROPERTIES.action) {
@@ -35,7 +40,8 @@ public class Main {
                 CRC8.test();
                 break;
             default:
-                System.out.println("Ação \"" + PROPERTIES.action + "\" não conhecida");
+                System.out.printf("Ação \"%s\" não conhecida\n", PROPERTIES.action);
+                System.exit(1);
         }
     }
 
@@ -50,17 +56,11 @@ public class Main {
             }
         }
 
-        System.out.println("---Parâmetros aplicados:---");
+        System.out.println("---- Parâmetros aplicados: ----");
         for (Field field : Properties.class.getFields()) {
-            System.out.println("\t" + field.getName() + ":" + field.get(PROPERTIES));
+            System.out.printf("\t%s:%s\n", field.getName(), field.get(PROPERTIES));
         }
-        System.out.println("---------------------------");
-
-        if (PROPERTIES.file == null) {
-            System.out.println("Informe o caminho de um arquivo por meio do parâmetro \"file\", por exemplo \"file:alice29.txt\"");
-        } else if (!new File(PROPERTIES.file).exists()) {
-            System.out.println(PROPERTIES.file + " não encontrado");
-        }
+        System.out.println("-------------------------------\n");
     }
 
 }
