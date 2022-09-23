@@ -1,19 +1,19 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
 public class EliasGamma extends Encoding {
 
-    private Unary unary;
+    private final Unary unary;
 
     private int prefixCount;
-    private boolean countingPrefix;
+    private boolean isCounting;
 
     public EliasGamma() {
         this.unary = new Unary();
-        countingPrefix = true;
+        this.isCounting = true;
     }
 
     @Override
@@ -26,25 +26,25 @@ public class EliasGamma extends Encoding {
         int intValue = Byte.toUnsignedInt(value) + 1;
 
         int prefixLength = log2(intValue);
-        this.unary.encodeUnsignedByte(writer, (byte) prefixLength, true);
+        unary.encodeUnsignedByte(writer, (byte) prefixLength);
 
         int suffix = intValue - (int) Math.pow(2, prefixLength);
         writer.writeBinary(suffix, prefixLength);
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws EndOfStreamException {
+    public byte decodeByte(BitReader reader) throws EndOfFileException {
         while (true) {
-            if (countingPrefix) {
+            if (isCounting) {
                 boolean bit = reader.readBit();
                 if (!bit)
                     prefixCount++;
                 else
-                    countingPrefix = false;
+                    isCounting = false;
             } else {
                 byte suffix = reader.readBits(prefixCount);
                 int decodedByte = (int) Math.pow(2, prefixCount) + suffix - 1;
-                countingPrefix = true;
+                isCounting = true;
                 prefixCount = 0;
                 return (byte) decodedByte;
             }

@@ -1,6 +1,6 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
@@ -20,16 +20,15 @@ public class Unary extends Encoding {
 
     @Override
     public void encodeByte(BitWriter writer, byte value) {
-        encodeUnsignedByte(writer, value, true);
+        encodeUnsignedByte(writer, value);
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws EndOfStreamException {
+    public byte decodeByte(BitReader reader) throws EndOfFileException {
         while (true) {
             boolean bit = reader.readBit();
-            if (bit == stopBit) {
+            if (bit == stopBit)
                 break;
-            }
             count++;
         }
         byte decodedByte = (byte) count;
@@ -44,20 +43,19 @@ public class Unary extends Encoding {
 
     @Override
     public byte getArg() {
-        return (byte) (stopBit ? 1 : 0);
+        return (byte) (this.stopBit ? 1 : 0);
     }
 
     @Override
     public boolean getFillupBit() {
-        return !stopBit;
+        return !this.stopBit;
     }
 
-    public void encodeUnsignedByte(BitWriter writer, byte value, boolean useStopBit) {
+    public void encodeUnsignedByte(BitWriter writer, byte value) {
         int intValue = Byte.toUnsignedInt(value);
         for (int i = 0; i < intValue; i++)
             writer.writeBit(!stopBit);
-        if (useStopBit)
-            writer.writeBit(stopBit);
+        writer.writeBit(stopBit);
     }
 
 

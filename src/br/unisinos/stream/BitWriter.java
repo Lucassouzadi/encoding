@@ -9,9 +9,8 @@ import java.io.OutputStream;
 public class BitWriter implements Closeable {
 
     private static final int BUFFER_LENGTH = 8;
-    private static final Hamming74 HAMMING = new Hamming74();
 
-    private OutputStream out;
+    private final OutputStream out;
     private byte buffer;
     private int count;
     private boolean fillupBit = false;
@@ -33,7 +32,7 @@ public class BitWriter implements Closeable {
         }
     }
 
-    public void writeHammingCodeword(boolean[] bits) {
+    public void decodeHammingCodeword(boolean[] bits) {
         boolean[] s = new boolean[4];
         boolean[] t = new boolean[3];
         s[0] = bits[0];
@@ -43,7 +42,7 @@ public class BitWriter implements Closeable {
         t[0] = bits[4];
         t[1] = bits[5];
         t[2] = bits[6];
-        HAMMING.correctCodeword(s, t);
+        Hamming74.correctCodeword(s, t);
         for (boolean bit : s) {
             writeBit(bit);
         }
@@ -54,47 +53,45 @@ public class BitWriter implements Closeable {
     }
 
     private void writeBit(boolean bit, boolean flush) {
-        this.count++;
-        this.buffer <<= 1;
-        this.buffer |= bit ? 1 : 0;
-        if (flush && this.count == BUFFER_LENGTH) {
+        count++;
+        buffer <<= 1;
+        buffer |= bit ? 1 : 0;
+        if (flush && count == BUFFER_LENGTH) {
             flush();
         }
     }
 
-    public void writeHammingNibble(boolean[] hammingShort) {
+    public void encodeHammingNibble(boolean[] hammingShort) {
         for (boolean bit : hammingShort) {
             writeBit(bit, true);
         }
 
-        boolean[] parityBits = HAMMING.parityBits(hammingShort);
+        boolean[] parityBits = Hamming74.parityBits(hammingShort);
         for (boolean parityBit : parityBits) {
             writeBit(parityBit, true);
         }
     }
 
-    public void flush() {
-        if (this.count == 0) return;
-        if (this.count < BUFFER_LENGTH) {
+    private void flush() {
+        if (count == 0) return;
+        while (count < BUFFER_LENGTH) { // Fillup buffer (may occour when flushing the last byte of the file)
             writeBit(fillupBit, false);
-            flush();
-        } else {
-            this.writeByteToOutputStream(buffer);
-            this.buffer = 0;
-            this.count = 0;
         }
+        writeByteToOutputStream(buffer);
+        buffer = 0;
+        count = 0;
     }
 
     private void writeByteToOutputStream(byte value) {
         try {
-            this.out.write(value);
+            out.write(value);
         } catch (IOException ioe) {
             throw new RuntimeException("Erro ao ler arquivo", ioe);
         }
     }
 
     public void writeByte(byte value) {
-        this.writeBinary(value, 8);
+        writeBinary(value, 8);
     }
 
     @Override

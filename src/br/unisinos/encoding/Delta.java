@@ -1,18 +1,17 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
 public class Delta extends Encoding {
 
-    private int maxLeap;
-    private int leapLength;
+    private int leapSizeBits; // leap size in bits (not considering stop bit)
 
-    private Byte lastByte;
+    private Byte previousByte;
 
-    public Delta(int maxLeap) {
-        this.setMaxLeap(maxLeap);
+    public Delta(int leapSize) {
+        this.leapSizeBits = leapSize;
     }
 
     @Override
@@ -22,20 +21,20 @@ public class Delta extends Encoding {
 
     @Override
     public byte getArg() {
-        return (byte) maxLeap;
+        return (byte) this.leapSizeBits;
     }
 
     @Override
     public void encodeByte(BitWriter writer, byte value) {
-        if (lastByte == null) {
+        if (previousByte == null) {
             writer.writeByte(value);
-            lastByte = value;
+            previousByte = value;
             return;
         }
 
         int intValue = Byte.toUnsignedInt(value);
-        int lastIntValue = Byte.toUnsignedInt(lastByte);
-        lastByte = value;
+        int lastIntValue = Byte.toUnsignedInt(previousByte);
+        previousByte = value;
 
         int delta = intValue - lastIntValue;
 
@@ -43,34 +42,29 @@ public class Delta extends Encoding {
             writer.writeBit(false);
         } else {
             writer.writeBit(true);
-            writer.writeBit(delta < 0);
-            writer.writeBinary(Math.abs(delta) - 1, leapLength);
+            writer.writeBit(delta < 0); // sign bit
+            writer.writeBinary(Math.abs(delta) - 1, leapSizeBits);
         }
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws EndOfStreamException {
-        // TODO: treat tail fillup bits
-        while (true) {
-            if (lastByte == null) {
-                lastByte = reader.readByte();
-                return lastByte;
-            }
-            boolean stepped = reader.readBit();
-            if (stepped) {
-                boolean sign = reader.readBit();
-                int step = reader.readBits(leapLength) + 1;
-                int decodedByte = sign ? lastByte - step : lastByte + step;
-                lastByte = (byte) decodedByte;
-            }
-            return lastByte;
+    public byte decodeByte(BitReader reader) throws EndOfFileException {
+        if (previousByte == null) {
+            previousByte = reader.readByte();
+            return previousByte;
         }
+        boolean stepped = reader.readBit();
+        if (stepped) {
+            boolean sign = reader.readBit();
+            int step = reader.readBits(leapSizeBits) + 1;
+            int decodedByte = sign ? previousByte - step : previousByte + step;
+            previousByte = (byte) decodedByte;
+        }
+        return previousByte;
     }
 
-    public void setMaxLeap(int maxLeap) {
-        this.leapLength = log2(maxLeap) + 1;
-        this.maxLeap = (int) Math.pow(2, this.leapLength) - 1;
-        this.lastByte = null;
+    public void setLeapSizeBits(int maxLeap) {
+        this.leapSizeBits = log2(maxLeap) + 1;
     }
 
 }

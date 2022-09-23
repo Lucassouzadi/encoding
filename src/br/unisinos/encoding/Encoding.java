@@ -1,6 +1,6 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
@@ -30,6 +30,26 @@ public abstract class Encoding {
         throw new RuntimeException("Encoding not found: " + identifier);
     }
 
+    public String getName() {
+        switch (getIdentifier()) {
+            case GOLOMB:
+                return "GOLOMB(divisor=" + Byte.toUnsignedInt(getArg()) + ")";
+            case ELIAS_GAMMA:
+                return "ELIAS_GAMMA";
+            case FIBONACCI:
+                return "FIBONACCI";
+            case DELTA:
+                return "DELTA(leapBits=" + getArg() + ")";
+            case UNARY:
+                return "UNARY(stopBit=" + getArg() + ")";
+        }
+        throw new RuntimeException("Encoding not found: " + getIdentifier());
+    }
+
+    public abstract void encodeByte(BitWriter writer, byte value);
+
+    public abstract byte decodeByte(BitReader reader) throws EndOfFileException;
+
     public void encodeByte(Map<Integer, Integer> dictionary, BitWriter writer, byte value) {
         try {
             encodeByte(writer, dictionary.get(Byte.toUnsignedInt(value)).byteValue());
@@ -38,34 +58,34 @@ public abstract class Encoding {
         }
     }
 
-    public abstract void encodeByte(BitWriter writer, byte value);
-
-    public abstract byte decodeByte(BitReader reader) throws EndOfStreamException;
-
     public void encodeByteArray(BitWriter writer, byte[] bytes) {
         for (byte b : bytes) {
-            this.encodeByte(writer, b);
+            encodeByte(writer, b);
         }
     }
 
     public void encodeByteArray(Map<Integer, Integer> dictionary, BitWriter writer, byte[] bytes) {
         for (byte b : bytes) {
-            this.encodeByte(dictionary, writer, b);
+            encodeByte(dictionary, writer, b);
         }
     }
 
-    public void encodeStream(Map<Integer, Integer> dictionary, BitWriter writer, BitReader bitReader) throws EndOfStreamException {
+    public void encodeStream(Map<Integer, Integer> dictionary, BitWriter writer, BitReader bitReader) throws EndOfFileException {
         while (true) {
             byte read = bitReader.readByte();
-            this.encodeByte(dictionary, writer, read);
+            encodeByte(dictionary, writer, read);
         }
     }
 
-    public void encodeStream(BitWriter writer, BitReader bitReader) throws EndOfStreamException {
+    public void encodeStream(BitWriter writer, BitReader bitReader) throws EndOfFileException {
         while (true) {
             byte read = bitReader.readByte();
-            this.encodeByte(writer, read);
+            encodeByte(writer, read);
         }
+    }
+
+    public static int log2(int x) {
+        return (int) (Math.log(x) / Math.log(2));
     }
 
     public abstract byte getIdentifier();
@@ -81,10 +101,6 @@ public abstract class Encoding {
     public void writeHeader(BitWriter writer) {
         writer.writeByte(getIdentifier());
         writer.writeByte(getArg());
-    }
-
-    public static int log2(int x) {
-        return (int) (Math.log(x) / Math.log(2));
     }
 
 }

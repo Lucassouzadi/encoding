@@ -2,7 +2,33 @@ package br.unisinos.errorDetection;
 
 public class Hamming74 {
 
-    public boolean[] parityBits(boolean[] value) {
+    public static void test() {
+        System.out.println("Relizando testes com todas as combinações possíveis de nibble (0000 até 1111)");
+        for (short i = 0; i < 16; i++) {
+            System.out.println("\nAplicando ruído no nibble " + i);
+
+            boolean s1 = (i >> 3 & 1) == 1;
+            boolean s2 = (i >> 2 & 1) == 1;
+            boolean s3 = (i >> 1 & 1) == 1;
+            boolean s4 = (i & 1) == 1;
+
+            boolean t5 = (s1 ^ s2 ^ s3);
+            boolean t6 = (s2 ^ s3 ^ s4);
+            boolean t7 = (s3 ^ s4 ^ s1);
+
+            correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, t6, t7});
+            correctCodeword(new boolean[]{!s1, s2, s3, s4}, new boolean[]{t5, t6, t7});
+            correctCodeword(new boolean[]{s1, !s2, s3, s4}, new boolean[]{t5, t6, t7});
+            correctCodeword(new boolean[]{s1, s2, !s3, s4}, new boolean[]{t5, t6, t7});
+            correctCodeword(new boolean[]{s1, s2, s3, !s4}, new boolean[]{t5, t6, t7});
+            correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{!t5, t6, t7});
+            correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, !t6, t7});
+            correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, t6, !t7});
+        }
+        System.out.println("Teste Hamming74 concluído");
+    }
+
+    public static boolean[] parityBits(boolean[] value) {
         boolean[] parity = new boolean[3];
 
         boolean s1 = value[0];
@@ -21,7 +47,7 @@ public class Hamming74 {
         return parity;
     }
 
-    public void correctCodeword(boolean[] s, boolean[] t) {
+    public static void correctCodeword(boolean[] s, boolean[] t) {
         boolean s1 = s[0];
         boolean s2 = s[1];
         boolean s3 = s[2];
@@ -36,7 +62,7 @@ public class Hamming74 {
         boolean t7Check = t7 == t[2];
 
         if (!t5Check || !t6Check || !t7Check) {
-            System.out.print("Erro detectado ao decriptar codeword ");
+            System.out.print("Erro detectado no codeword ");
             for (boolean bit : s) System.out.print(bit ? 1 : 0);
             for (boolean bit : t) System.out.print(bit ? 1 : 0);
             String culpado = "";
@@ -65,29 +91,6 @@ public class Hamming74 {
             System.out.print(", bit culpado: " + culpado + " - codeword corrigido: ");
             for (boolean bit : s) System.out.print(bit ? 1 : 0);
             for (boolean bit : t) System.out.print(bit ? 1 : 0);
-            System.out.println();
-        }
-    }
-
-    public static void testeRuido() {
-        for (int i = 0; i < 16; i++) {
-            boolean s1 = (i >> 3 & 1) == 1;
-            boolean s2 = (i >> 2 & 1) == 1;
-            boolean s3 = (i >> 1 & 1) == 1;
-            boolean s4 = (i & 1) == 1;
-
-            boolean t5 = (s1 ^ s2 ^ s3);
-            boolean t6 = (s2 ^ s3 ^ s4);
-            boolean t7 = (s3 ^ s4 ^ s1);
-
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{!s1, s2, s3, s4}, new boolean[]{t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, !s2, s3, s4}, new boolean[]{t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, !s3, s4}, new boolean[]{t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, s3, !s4}, new boolean[]{t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{!t5, t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, !t6, t7});
-            new Hamming74().correctCodeword(new boolean[]{s1, s2, s3, s4}, new boolean[]{t5, t6, !t7});
             System.out.println();
         }
     }

@@ -1,6 +1,6 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
@@ -9,7 +9,7 @@ import java.util.List;
 
 public class Fibonacci extends Encoding {
 
-    private List<Integer> sequence;
+    private final List<Integer> sequence;
     private int count;
     private int decodeBuffer;
     private boolean lastBit;
@@ -34,16 +34,15 @@ public class Fibonacci extends Encoding {
 
         int closest = updateSequence(intValue);
 
-        boolean[] bits = new boolean[closest + 1];
+        boolean[] fibonacciBits = new boolean[closest + 1];
 
-        for (int i = bits.length - 1; i >= 0; i--) {
-            bits[i] = intValue >= sequence.get(i);
-            if (bits[i]) {
+        for (int i = fibonacciBits.length - 1; i >= 0; i--) {
+            fibonacciBits[i] = intValue >= sequence.get(i);
+            if (fibonacciBits[i])
                 intValue -= sequence.get(i);
-            }
         }
 
-        for (boolean bit : bits) {
+        for (boolean bit : fibonacciBits) {
             writer.writeBit(bit);
         }
 
@@ -51,7 +50,7 @@ public class Fibonacci extends Encoding {
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws EndOfStreamException {
+    public byte decodeByte(BitReader reader) throws EndOfFileException {
         while (true) {
             boolean bit = reader.readBit();
             if (bit && lastBit) {
@@ -61,12 +60,10 @@ public class Fibonacci extends Encoding {
                 lastBit = false;
                 return (byte) decodedByte;
             } else {
-                if (sequence.size() <= count) {
+                if (sequence.size() <= count)
                     incrementSequence();
-                }
-                if (bit) {
+                if (bit)
                     decodeBuffer += sequence.get(count);
-                }
                 lastBit = bit;
                 count++;
             }
@@ -74,9 +71,8 @@ public class Fibonacci extends Encoding {
     }
 
     private int updateSequence(int value) {
-        while (sequence.get(sequence.size() - 1) < value) {
+        while (sequence.get(sequence.size() - 1) < value)
             incrementSequence();
-        }
 
         int closest = sequence.size() - 1;
 

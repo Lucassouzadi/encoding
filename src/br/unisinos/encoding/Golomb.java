@@ -1,13 +1,13 @@
 package br.unisinos.encoding;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 
 public class Golomb extends Encoding {
 
-    private int divisor;
-    private Unary unary;
+    private final Unary unary;
+    private final int divisor;
 
     private int prefixCount;
     private boolean countingPrefix;
@@ -15,7 +15,7 @@ public class Golomb extends Encoding {
     public Golomb(int divisor) {
         this.divisor = divisor;
         this.unary = new Unary();
-        countingPrefix = true;
+        this.countingPrefix = true;
     }
 
     @Override
@@ -25,7 +25,7 @@ public class Golomb extends Encoding {
 
     @Override
     public byte getArg() {
-        return (byte) divisor;
+        return (byte) this.divisor;
     }
 
     @Override
@@ -33,7 +33,7 @@ public class Golomb extends Encoding {
         int intValue = Byte.toUnsignedInt(value);
 
         int prefix = intValue / divisor;
-        this.unary.encodeUnsignedByte(writer, (byte) prefix, true);
+        unary.encodeUnsignedByte(writer, (byte) prefix);
 
         int suffix = intValue % divisor;
         writer.writeBinary(suffix, suffixLength());
@@ -44,7 +44,7 @@ public class Golomb extends Encoding {
     }
 
     @Override
-    public byte decodeByte(BitReader reader) throws EndOfStreamException {
+    public byte decodeByte(BitReader reader) throws EndOfFileException {
         while (true) {
             if (countingPrefix) {
                 boolean bit = reader.readBit();

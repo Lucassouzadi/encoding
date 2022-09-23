@@ -3,18 +3,21 @@ package br.unisinos;
 import br.unisinos.encoding.Delta;
 import br.unisinos.encoding.Encoding;
 import br.unisinos.errorDetection.CRC8;
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 import br.unisinos.stream.BitReader;
 import br.unisinos.stream.BitWriter;
 import br.unisinos.utils.Tuple;
 import br.unisinos.utils.Utils;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static br.unisinos.Main.PROPERTIES;
 
 public class Encoder {
 
@@ -27,50 +30,55 @@ public class Encoder {
         this.encoding = Encoding.getInstance(encodingId, arg);
     }
 
-    public void getEncoding(BitReader reader) throws EndOfStreamException {
+    public void readEncodingFromFile(BitReader reader) throws EndOfFileException {
         int encodingIdentifier = Byte.toUnsignedInt(reader.readByte());
-        int arg1 = Byte.toUnsignedInt(reader.readByte());
-        this.encoding = Encoding.getInstance(encodingIdentifier, arg1);
+        int arg = Byte.toUnsignedInt(reader.readByte());
+        this.encoding = Encoding.getInstance(encodingIdentifier, arg);
     }
 
-    public void encodeFile(String filePath) {
-        String codedPath = Utils.switchFileExtension(filePath, "cod");
-        String encryptedPath = Utils.switchFileExtension(filePath, "ecc");
+    public void encodeAndEncryptFile(String filePath) {
+        File origin = new File(filePath);
+        File encoded = new File(Utils.switchFileExtension(filePath, "cod"));
+        File encrypted = new File(Utils.switchFileExtension(filePath, "ecc"));
 
-        encodeFile(filePath, codedPath);
-        encryptFile(codedPath, encryptedPath);
+        encodeFile(origin, encoded);
+        encryptFile(encoded, encrypted);
+
+        printSizes(origin, encoded, encrypted);
     }
 
-    public void decodeFile(String filePath) {
-        String decryptedPath = Utils.switchFileExtension(filePath, "dcc");
-        String decodedPath = Utils.switchFileExtension(filePath, "dec");
+    public void decryptAndDecodeFile(String filePath) {
+        File origin = new File(filePath);
+        File decrypted = new File(Utils.switchFileExtension(filePath, "dcc"));
+        File decoded = new File(Utils.switchFileExtension(filePath, "dec"));
 
-        if (decryptFile(filePath, decryptedPath))
-            decodeFile(decryptedPath, decodedPath);
+        if (decryptFile(origin, decrypted))
+            decodeFile(decrypted, decoded);
+
+        printSizes(origin, decrypted, decoded);
     }
 
-    private void encodeFile(String filePath, String targetPath) {
+    private void encodeFile(File origin, File target) {
         try (
-                FileInputStream inputStream = new FileInputStream(filePath);
-                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                FileInputStream inputStream = new FileInputStream(origin);
+                FileOutputStream outputStream = new FileOutputStream(target);
                 BitWriter bitWriter = new BitWriter(outputStream)
         ) {
             BitReader bitReader = new BitReader(inputStream);
 
             if (encoding instanceof Delta) {
-                ((Delta) encoding).setMaxLeap(getMaxLeap(filePath));
+                ((Delta) encoding).setLeapSizeBits(getMaxLeap(origin));
             }
 
             bitWriter.setFillupBit(encoding.getFillupBit());
             encoding.writeHeader(bitWriter);
 
-            if (Main.PROPERTIES.useDictionary) {
-                int[] histogram = getHistogram(filePath);
+            if (PROPERTIES.useDictionary) {
+                int[] histogram = getHistogram(origin);
                 List<Tuple<Integer, Integer>> sortedHistogram = sortedHistogram(histogram);
                 Map<Integer, Integer> dictionary = buildDictionary(sortedHistogram);
 
-                byte range = Integer.valueOf(dictionary.size() - 1).byteValue();
-                bitWriter.writeByte(range);
+                bitWriter.writeByte((byte) (dictionary.size() - 1));
 
                 for (Tuple<Integer, Integer> codeword : sortedHistogram) {
                     bitWriter.writeByte(codeword.getKey().byteValue());
@@ -79,91 +87,63 @@ public class Encoder {
             } else {
                 encoding.encodeStream(bitWriter, bitReader);
             }
-        } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " encoded to " + targetPath);
+        } catch (EndOfFileException ex) {
+            System.out.println(origin.getAbsolutePath() + " encoded to " + target.getAbsolutePath() + " using " + encoding.getName());
         } catch (IOException e) {
             System.out.println("Error while encoding: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private void encryptFile(String filePath, String targetPath) {
+    private void encryptFile(File origin, File target) {
         try (
-                FileInputStream inputStream = new FileInputStream(filePath);
-                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                FileInputStream inputStream = new FileInputStream(origin);
+                FileOutputStream outputStream = new FileOutputStream(target);
                 BitWriter bitWriter = new BitWriter(outputStream)
         ) {
             BitReader bitReader = new BitReader(inputStream);
 
-            getEncoding(bitReader);
-            encoding.writeHeader(bitWriter);
-
             List<Byte> crcBytes = new ArrayList<>();
-            crcBytes.add(encoding.getIdentifier());
-            crcBytes.add(encoding.getArg());
+            skipHeaders(crcBytes, bitReader, bitWriter);
 
-            if (Main.PROPERTIES.useDictionary) {
-                byte dictionarySizeByte = bitReader.readBits(8);
-                crcBytes.add(dictionarySizeByte);
-                bitWriter.writeByte(dictionarySizeByte);
-                for (int i = 0; i <= Byte.toUnsignedInt(dictionarySizeByte); i++) {
-                    byte readByte = bitReader.readBits(8);
-                    crcBytes.add(readByte);
-                    bitWriter.writeByte(readByte);
-                }
-            }
             bitWriter.writeByte(CRC8.calculate(crcBytes.toArray(new Byte[0])));
-            boolean[] hammingShort = new boolean[4];
+            boolean[] hammingNibble = new boolean[4];
             while (true) {
-                hammingShort[0] = bitReader.readBit();
-                hammingShort[1] = bitReader.readBit();
-                hammingShort[2] = bitReader.readBit();
-                hammingShort[3] = bitReader.readBit();
-                bitWriter.writeHammingNibble(hammingShort);
+                hammingNibble[0] = bitReader.readBit();
+                hammingNibble[1] = bitReader.readBit();
+                hammingNibble[2] = bitReader.readBit();
+                hammingNibble[3] = bitReader.readBit();
+                bitWriter.encodeHammingNibble(hammingNibble);
             }
-        } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " encrypted to " + targetPath);
+        } catch (EndOfFileException ex) {
+            System.out.println(origin.getAbsolutePath() + " encrypted to " + target.getAbsolutePath() + " using CRC8 for header and Hamming(7,4) for data");
         } catch (IOException e) {
             System.out.println("Error while encrypting: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private boolean decryptFile(String filePath, String targetPath) {
+    private boolean decryptFile(File origin, File target) {
         try (
-                FileInputStream inputStream = new FileInputStream(filePath);
-                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                FileInputStream inputStream = new FileInputStream(origin);
+                FileOutputStream outputStream = new FileOutputStream(target);
                 BitWriter bitWriter = new BitWriter(outputStream);
         ) {
             BitReader bitReader = new BitReader(inputStream);
-            getEncoding(bitReader);
-            encoding.writeHeader(bitWriter);
 
             List<Byte> crcBytes = new ArrayList<>();
-            crcBytes.add(encoding.getIdentifier());
-            crcBytes.add(encoding.getArg());
+            skipHeaders(crcBytes, bitReader, bitWriter);
 
-            if (Main.PROPERTIES.useDictionary) {
-                byte dictionarySizebyte = bitReader.readBits(8);
-                crcBytes.add(dictionarySizebyte);
-                bitWriter.writeByte(dictionarySizebyte);
-                for (int i = 0; i <= Byte.toUnsignedInt(dictionarySizebyte); i++) {
-                    byte readByte = bitReader.readBits(8);
-                    crcBytes.add(readByte);
-                    bitWriter.writeByte(readByte);
-                }
-            }
-
-            byte readCrc = bitReader.readBits(8);
+            byte headerCrc = bitReader.readBits(8);
             byte calculatedCrc = CRC8.calculate(crcBytes.toArray(new Byte[0]));
 
-            if (readCrc != calculatedCrc) {
-                System.out.println("Erro de validação de CRC para " + filePath + " - calculado: " + Byte.toUnsignedInt(calculatedCrc) + ", lido: " + Byte.toUnsignedInt(readCrc));
+            if (headerCrc != calculatedCrc) {
+                System.out.println("Erro de validação de CRC para " + origin + " - calculado: " + Byte.toUnsignedInt(calculatedCrc) + ", lido no cabeçalho: " + Byte.toUnsignedInt(headerCrc));
                 return false;
             }
 
+            boolean[] hammingCodeword = new boolean[7];
             while (true) {
-                boolean[] hammingCodeword = new boolean[7];
                 hammingCodeword[0] = bitReader.readBit();
                 hammingCodeword[1] = bitReader.readBit();
                 hammingCodeword[2] = bitReader.readBit();
@@ -171,10 +151,10 @@ public class Encoder {
                 hammingCodeword[4] = bitReader.readBit();
                 hammingCodeword[5] = bitReader.readBit();
                 hammingCodeword[6] = bitReader.readBit();
-                bitWriter.writeHammingCodeword(hammingCodeword);
+                bitWriter.decodeHammingCodeword(hammingCodeword);
             }
-        } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " decrypted to " + targetPath);
+        } catch (EndOfFileException ex) {
+            System.out.println(origin.getAbsolutePath() + " decrypted to " + target.getAbsolutePath() + " validating CRC8 on header and Hamming(7,4) for data");
         } catch (IOException e) {
             System.out.println("Error while decrypting: " + e.getMessage());
             e.printStackTrace();
@@ -183,40 +163,59 @@ public class Encoder {
         return true;
     }
 
-    private void decodeFile(String filePath, String targetPath) {
+    private void skipHeaders(List<Byte> crcBytes, BitReader bitReader, BitWriter bitWriter) throws EndOfFileException {
+        readEncodingFromFile(bitReader);
+        encoding.writeHeader(bitWriter);
+
+        crcBytes.add(encoding.getIdentifier());
+        crcBytes.add(encoding.getArg());
+
+        if (PROPERTIES.useDictionary) {
+            byte dictionarySizebyte = bitReader.readBits(8);
+            crcBytes.add(dictionarySizebyte);
+            bitWriter.writeByte(dictionarySizebyte);
+            for (int i = 0; i <= Byte.toUnsignedInt(dictionarySizebyte); i++) {
+                byte readByte = bitReader.readBits(8);
+                crcBytes.add(readByte);
+                bitWriter.writeByte(readByte);
+            }
+        }
+    }
+
+    private void decodeFile(File origin, File target) {
         try (
-                FileInputStream inputStream = new FileInputStream(filePath);
-                FileOutputStream outputStream = new FileOutputStream(targetPath);
+                FileInputStream inputStream = new FileInputStream(origin);
+                FileOutputStream outputStream = new FileOutputStream(target);
                 BitWriter bitWriter = new BitWriter(outputStream);
         ) {
             BitReader bitReader = new BitReader(inputStream);
-            getEncoding(bitReader);
+            readEncodingFromFile(bitReader);
 
             Map<Integer, Integer> dictionary = new HashMap<>();
-            if (Main.PROPERTIES.useDictionary) {
-                int range = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
-                for (int i = 0; i < range; i++)
+            if (PROPERTIES.useDictionary) {
+                int dictionarySize = Byte.toUnsignedInt(bitReader.readBits(8)) + 1;
+                for (int i = 0; i < dictionarySize; i++)
                     dictionary.put(i, Byte.toUnsignedInt(bitReader.readBits(8)));
             }
 
             while (true) {
                 byte decodedByte = encoding.decodeByte(bitReader);
-                if (Main.PROPERTIES.useDictionary) {
+                if (PROPERTIES.useDictionary) {
                     decodedByte = dictionary.get(Byte.toUnsignedInt(decodedByte)).byteValue();
                 }
                 bitWriter.writeByte(decodedByte);
             }
-        } catch (EndOfStreamException ex) {
-            System.out.println(filePath + " decoded to " + targetPath);
+        } catch (EndOfFileException ex) {
+            System.out.println(origin.getAbsolutePath() + " decoded to " + target.getAbsolutePath() + " using " + encoding.getName());
         } catch (IOException e) {
             System.out.println("Error while decoding: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    public int[] getHistogram(String filePath) {
+    public int[] getHistogram(File file) {
         int[] histogram = new int[256];
-        try (FileInputStream inputStream = new FileInputStream(filePath)) {
+        try (FileInputStream inputStream = new FileInputStream(file)) {
             int read;
             while ((read = inputStream.read()) != -1) {
                 histogram[read]++;
@@ -246,21 +245,31 @@ public class Encoder {
         return dictionary;
     }
 
-    public int getMaxLeap(String filePath) {
+    private int getMaxLeap(File file) {
         int maxLeap = 0;
-        try (FileInputStream inputStream = new FileInputStream(filePath)) {
-            int lastRead, read = inputStream.read();
-            lastRead = read;
-            while (read != -1) {
-                int leap = Math.abs(read - lastRead);
+        try (FileInputStream inputStream = new FileInputStream(file)) {
+            int currentByte = inputStream.read();
+            int previousByte = currentByte;
+            while (currentByte != -1) {
+                int leap = Math.abs(currentByte - previousByte);
                 maxLeap = Math.max(leap, maxLeap);
-                lastRead = read;
-                read = inputStream.read();
+                previousByte = currentByte;
+                currentByte = inputStream.read();
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return maxLeap;
+    }
+
+    private void printSizes(File... files) {
+        if (PROPERTIES.logFileSizes && files.length > 0) {
+            System.out.print(files[0].length() + " bytes");
+            for (int i = 1; i < files.length; i++) {
+                System.out.print(" --> " + files[i].length() + " bytes");
+            }
+            System.out.println();
+        }
     }
 
 }

@@ -1,6 +1,6 @@
 package br.unisinos.stream;
 
-import br.unisinos.exception.EndOfStreamException;
+import br.unisinos.exception.EndOfFileException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,7 +9,7 @@ public class BitReader {
 
     private static final int BUFFER_LENGTH = 8;
 
-    private InputStream in;
+    private final InputStream in;
     private byte buffer;
     private int count;
 
@@ -19,11 +19,12 @@ public class BitReader {
         this.count = BUFFER_LENGTH;
     }
 
-    public byte readByte() throws EndOfStreamException {
+    public byte readByte() throws EndOfFileException {
         int read = readByteFromInputStream();
         if (read == -1) {
             count = 0;
-            throw new EndOfStreamException();
+            buffer = 0;
+            throw new EndOfFileException();
         }
         return (byte) read;
     }
@@ -36,7 +37,7 @@ public class BitReader {
         }
     }
 
-    public byte readBits(int length) throws EndOfStreamException {
+    public byte readBits(int length) throws EndOfFileException {
         byte readByte = 0;
         for (int i = 0; i < length; i++) {
             readByte <<= 1;
@@ -45,7 +46,7 @@ public class BitReader {
         return readByte;
     }
 
-    public boolean readBit() throws EndOfStreamException {
+    public boolean readBit() throws EndOfFileException {
         if (count == BUFFER_LENGTH) {
             buffer = readByte();
             count = 0;

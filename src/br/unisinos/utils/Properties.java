@@ -5,11 +5,11 @@ import java.lang.reflect.Field;
 public class Properties {
 
     public String action = "encodeAndDecode";
-    public boolean useDictionary = true;
-    public boolean testHamming = false;
+    public String file;
     public int encoding = 0;
     public int arg = 4;
-    public String file;
+    public boolean useDictionary = true;
+    public boolean logFileSizes = true;
 
     public void setProp(String key, String value) {
         try {

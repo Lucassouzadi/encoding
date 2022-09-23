@@ -25,3 +25,9 @@ hs_err_pid*
 # Intellij
 *.iml
 .idea
+
+# Coding output
+*.cod
+*.ecc
+*.dcc
+*.dec
