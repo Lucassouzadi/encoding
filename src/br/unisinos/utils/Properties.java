@@ -7,9 +7,11 @@ public class Properties {
     public String action = "encodeAndDecode";
     public String file;
     public int encoding = 0;
-    public int arg = 4;
+    public int arg = 8;
     public boolean useDictionary = true;
+
     public boolean logFileSizes = true;
+//    public boolean logHistogram = false;
 
     public void setProp(String key, String value) {
         try {

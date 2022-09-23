@@ -33,7 +33,7 @@ public abstract class Encoding {
     public String getName() {
         switch (getIdentifier()) {
             case GOLOMB:
-                return "GOLOMB(divisor=" + Byte.toUnsignedInt(getArg()) + ")";
+                return "GOLOMB(K=" + Byte.toUnsignedInt(getArg()) + ")";
             case ELIAS_GAMMA:
                 return "ELIAS_GAMMA";
             case FIBONACCI:
