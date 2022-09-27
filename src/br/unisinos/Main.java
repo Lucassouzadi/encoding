@@ -56,7 +56,7 @@ public class Main {
             }
         }
 
-        System.out.println("---- Parâmetros aplicados: ----");
+        System.out.println("\n---- Parâmetros aplicados: ----");
         for (Field field : Properties.class.getFields()) {
             System.out.printf("\t%s:%s\n", field.getName(), field.get(PROPERTIES));
         }

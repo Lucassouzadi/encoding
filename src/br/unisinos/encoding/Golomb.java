@@ -40,7 +40,7 @@ public class Golomb extends Encoding {
     }
 
     private int suffixLength() {
-        return log2(divisor);
+        return (int) Math.ceil(Math.log(divisor) / Math.log(2));
     }
 
     @Override

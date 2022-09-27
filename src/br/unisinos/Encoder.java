@@ -263,7 +263,7 @@ public class Encoder {
     }
 
     private void printSizes(File... files) {
-        if (PROPERTIES.logFileSizes && files.length > 0) {
+        if (files.length > 0) {
             System.out.printf("%d bytes", files[0].length());
             for (int i = 1; i < files.length; i++) {
                 System.out.printf(" --> %d bytes", files[i].length());
