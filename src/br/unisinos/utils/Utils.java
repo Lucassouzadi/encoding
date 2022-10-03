@@ -3,10 +3,10 @@ package br.unisinos.utils;
 public class Utils {
 
     public static String switchFileExtension(String filePath, String newExtension) {
-        int lastIndexOfPeriod = filePath.lastIndexOf('.');
-        lastIndexOfPeriod = lastIndexOfPeriod != -1 ? lastIndexOfPeriod : filePath.length();
+        int lastPeriod = filePath.lastIndexOf('.');
+        lastPeriod = lastPeriod != -1 ? lastPeriod : filePath.length();
 
-        String fileNameWithoutExtension = filePath.substring(0, lastIndexOfPeriod);
+        String fileNameWithoutExtension = filePath.substring(0, lastPeriod);
 
         return fileNameWithoutExtension + '.' + newExtension;
     }

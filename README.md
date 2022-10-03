@@ -107,7 +107,7 @@ Caso habilitado, será feita uma pré-análise do arquivo para se montar o histo
 		[] 0x17 (23): 0 ocorrências
 		[] 0x18 (24): 0 ocorrências
 		[] 0x19 (25): 0 ocorrências
-		[] 0x1A (26): 1 ocorrências
+		[] 0x1A (26): 1 ocorrência
 		[] 0x1B (27): 0 ocorrências
 		[] 0x1C (28): 0 ocorrências
 		[] 0x1D (29): 0 ocorrências
@@ -131,14 +131,14 @@ Caso habilitado, será feita uma pré-análise do arquivo para se montar o histo
 		[/] 0x2F (47): 0 ocorrências
 		[0] 0x30 (48): 0 ocorrências
 		[1] 0x31 (49): 0 ocorrências
-		[2] 0x32 (50): 1 ocorrências
+		[2] 0x32 (50): 1 ocorrência
 		[3] 0x33 (51): 0 ocorrências
 		[4] 0x34 (52): 0 ocorrências
 		[5] 0x35 (53): 0 ocorrências
 		[6] 0x36 (54): 0 ocorrências
 		[7] 0x37 (55): 0 ocorrências
 		[8] 0x38 (56): 0 ocorrências
-		[9] 0x39 (57): 1 ocorrências
+		[9] 0x39 (57): 1 ocorrência
 		[:] 0x3A (58): 233 ocorrências
 		[;] 0x3B (59): 194 ocorrências
 		[<] 0x3C (60): 0 ocorrências
@@ -171,7 +171,7 @@ Caso habilitado, será feita uma pré-análise do arquivo para se montar o histo
 		[W] 0x57 (87): 237 ocorrências
 		[X] 0x58 (88): 4 ocorrências
 		[Y] 0x59 (89): 114 ocorrências
-		[Z] 0x5A (90): 1 ocorrências
+		[Z] 0x5A (90): 1 ocorrência
 		[[] 0x5B (91): 2 ocorrências
 		[\] 0x5C (92): 0 ocorrências
 		[]] 0x5D (93): 2 ocorrências
@@ -338,7 +338,6 @@ Caso habilitado, será feita uma pré-análise do arquivo para se montar o histo
 		[ý] 0xFD (253): 0 ocorrências
 		[þ] 0xFE (254): 0 ocorrências
 		[ÿ] 0xFF (255): 0 ocorrências
-
 	Dicionário resultante(tamanho=74):
 		[ ] 0x20, com 28900 ocorrências, mapeado para 0x00
 		[e] 0x65, com 13381 ocorrências, mapeado para 0x01
@@ -411,10 +410,10 @@ Caso habilitado, será feita uma pré-análise do arquivo para se montar o histo
 		[X] 0x58, com 4 ocorrências, mapeado para 0x43
 		[]] 0x5D, com 2 ocorrências, mapeado para 0x44
 		[[] 0x5B, com 2 ocorrências, mapeado para 0x45
-		[Z] 0x5A, com 1 ocorrências, mapeado para 0x46
-		[9] 0x39, com 1 ocorrências, mapeado para 0x47
-		[2] 0x32, com 1 ocorrências, mapeado para 0x48
-		[] 0x1A, com 1 ocorrências, mapeado para 0x49
+		[Z] 0x5A, com 1 ocorrência, mapeado para 0x46
+		[9] 0x39, com 1 ocorrência, mapeado para 0x47
+		[2] 0x32, com 1 ocorrência, mapeado para 0x48
+		[] 0x1A, com 1 ocorrência, mapeado para 0x49
 	  </pre>
 	</details>
 

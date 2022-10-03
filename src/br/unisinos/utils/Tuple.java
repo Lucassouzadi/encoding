@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class Tuple<K, V> implements Map.Entry<K, V> {
 
-    private K key;
+    private final K key;
     private V value;
 
     public Tuple(K key, V value) {

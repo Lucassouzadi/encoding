@@ -276,13 +276,13 @@ public class Encoder {
         if (PROPERTIES.logHistogram) {
             System.out.println("Histograma completo:");
             for (int i = 0; i < histogram.length; i++) {
-                System.out.printf("\t[%c] 0x%02X (%d): %d ocorrências\n", i, i, i, histogram[i]);
+                System.out.printf("\t[%c] 0x%02X (%d): %d ocorrência%s\n", i, i, i, histogram[i], histogram[i] != 1 ? "s" : "");
             }
             System.out.printf("\nDicionário resultante(tamanho=%d):\n", sortedHistogram.size());
             for (int i = 0; i < sortedHistogram.size(); i++) {
                 int key = sortedHistogram.get(i).getKey();
                 int value = sortedHistogram.get(i).getValue();
-                System.out.printf("\t[%c] 0x%02X, com %d ocorrências, mapeado para 0x%02X\n", key, key, value, i);
+                System.out.printf("\t[%c] 0x%02X, com %d ocorrência%s, mapeado para 0x%02X\n", key, key, value, value != 1 ? "s" : "", i);
             }
             System.out.println();
         }
